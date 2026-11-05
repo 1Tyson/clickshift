@@ -2,6 +2,8 @@
 Type=Application
 Name=Clickshift
 Comment=Remap mouse buttons for each application
+Comment[vi]=Gán lại nút chuột theo từng ứng dụng
+Comment[zh_CN]=按应用重新映射鼠标按键
 Exec=clickshift-settings
 Icon=input-mouse-symbolic
 Terminal=false

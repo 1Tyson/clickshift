@@ -12,6 +12,9 @@ use clickshift::device::readable_mouse_names;
 use clickshift::document::{Form, Saved, Slot, Store, key_token};
 use clickshift::macros::Macro;
 use gtk::{gdk, gio, glib};
+use i18n::{Text, tr};
+
+mod i18n;
 
 const APP_ID: &str = "io.github.clickshift.Settings";
 const SERVICE: &str = "clickshift.service";
@@ -25,48 +28,82 @@ const XKB_KEYCODE_OFFSET: u32 = 8;
 /// Left/right Ctrl, Shift, Alt and Super, which only count as part of a chord.
 const MODIFIER_CODES: [u16; 8] = [29, 97, 42, 54, 56, 100, 125, 126];
 
-const MAIN_BUTTONS: [(&str, &str); 5] = [
-    ("left", "Chuột trái"),
-    ("right", "Chuột phải"),
-    ("middle", "Nút giữa"),
-    ("side", "Nút bên (side)"),
-    ("extra", "Nút bên (extra)"),
+const MAIN_BUTTONS: [(&str, Text); 5] = [
+    ("left", ["Left button", "Chuột trái", "左键"]),
+    ("right", ["Right button", "Chuột phải", "右键"]),
+    ("middle", ["Middle button", "Nút giữa", "中键"]),
+    (
+        "side",
+        ["Side button (side)", "Nút bên (side)", "侧键 (side)"],
+    ),
+    (
+        "extra",
+        ["Side button (extra)", "Nút bên (extra)", "侧键 (extra)"],
+    ),
 ];
-const OTHER_BUTTONS: [(&str, &str); 3] = [
-    ("forward", "Nút forward"),
-    ("back", "Nút back"),
-    ("task", "Nút task"),
+const OTHER_BUTTONS: [(&str, Text); 3] = [
+    (
+        "forward",
+        ["Forward button", "Nút forward", "前进键 (forward)"],
+    ),
+    ("back", ["Back button", "Nút back", "后退键 (back)"]),
+    ("task", ["Task button", "Nút task", "任务键 (task)"]),
 ];
-const WHEEL_INPUTS: [(&str, &str); 4] = [
-    ("wheel_up", "Cuộn lên"),
-    ("wheel_down", "Cuộn xuống"),
-    ("wheel_left", "Cuộn trái"),
-    ("wheel_right", "Cuộn phải"),
+const WHEEL_INPUTS: [(&str, Text); 4] = [
+    ("wheel_up", ["Scroll up", "Cuộn lên", "向上滚动"]),
+    ("wheel_down", ["Scroll down", "Cuộn xuống", "向下滚动"]),
+    ("wheel_left", ["Scroll left", "Cuộn trái", "向左滚动"]),
+    ("wheel_right", ["Scroll right", "Cuộn phải", "向右滚动"]),
 ];
-const MOUSE_OUTPUTS: [(&str, &str); 5] = [
-    ("mouse_left", "Chuột trái"),
-    ("mouse_right", "Chuột phải"),
-    ("mouse_middle", "Nút giữa"),
-    ("mouse_back", "Quay lại"),
-    ("mouse_forward", "Đi tới"),
+const MOUSE_OUTPUTS: [(&str, Text); 5] = [
+    ("mouse_left", ["Left button", "Chuột trái", "左键"]),
+    ("mouse_right", ["Right button", "Chuột phải", "右键"]),
+    ("mouse_middle", ["Middle button", "Nút giữa", "中键"]),
+    ("mouse_back", ["Back", "Quay lại", "后退"]),
+    ("mouse_forward", ["Forward", "Đi tới", "前进"]),
 ];
-const MACRO_HELP: &str = "Ký tự thường được gõ như phím, theo bố cục bàn phím US.\n\
+const MACRO_HELP: Text = [
+    "Plain characters are typed as keys, assuming a US keyboard layout.\n\
+{LMB} {RMB} {MMB} {MB4} {MB5}: click; add D or U to press or release, as in {LMBD}\n\
+{MWUP} {MWDN} {MWLT} {MWRT}: scroll one notch\n\
+{WAITMS:160}: wait, in milliseconds\n\
+{Enter} {F5} {Ctrl+C}: tap a key or key combination\n\
+{PRESS:Ctrl} {RELEASE:Ctrl}: press or release a key\n\n\
+A macro stops by itself when you switch windows.",
+    "Ký tự thường được gõ như phím, theo bố cục bàn phím US.\n\
 {LMB} {RMB} {MMB} {MB4} {MB5}: bấm chuột; thêm D hoặc U để nhấn hoặc nhả, như {LMBD}\n\
 {MWUP} {MWDN} {MWLT} {MWRT}: cuộn một nấc\n\
 {WAITMS:160}: chờ, tính bằng mili giây\n\
 {Enter} {F5} {Ctrl+C}: bấm phím hoặc tổ hợp phím\n\
 {PRESS:Ctrl} {RELEASE:Ctrl}: nhấn hoặc nhả một phím\n\n\
-Macro tự dừng khi bạn đổi cửa sổ.";
-const MACRO_MODES: [(MacroMode, &str); 3] = [
-    (MacroMode::WhileHeld, "Đè để chạy"),
-    (MacroMode::RepeatWhileHeld, "Đè để lặp"),
-    (MacroMode::Toggle, "Bấm để chạy/dừng"),
+Macro tự dừng khi bạn đổi cửa sổ.",
+    "普通字符按美式键盘布局作为按键输入。\n\
+{LMB} {RMB} {MMB} {MB4} {MB5}：单击；加 D 或 U 表示按下或松开，如 {LMBD}\n\
+{MWUP} {MWDN} {MWLT} {MWRT}：滚动一格\n\
+{WAITMS:160}：等待，单位为毫秒\n\
+{Enter} {F5} {Ctrl+C}：按一次按键或组合键\n\
+{PRESS:Ctrl} {RELEASE:Ctrl}：按下或松开一个按键\n\n\
+切换窗口时宏会自动停止。",
 ];
-const SCROLL_OUTPUTS: [(&str, &str); 4] = [
-    ("up", "Lên"),
-    ("down", "Xuống"),
-    ("left", "Trái"),
-    ("right", "Phải"),
+const MACRO_MODES: [(MacroMode, Text); 3] = [
+    (
+        MacroMode::WhileHeld,
+        ["Play while held", "Đè để chạy", "按住时播放"],
+    ),
+    (
+        MacroMode::RepeatWhileHeld,
+        ["Repeat while held", "Đè để lặp", "按住时循环"],
+    ),
+    (
+        MacroMode::Toggle,
+        ["Click to start/stop", "Bấm để chạy/dừng", "单击开始/停止"],
+    ),
+];
+const SCROLL_OUTPUTS: [(&str, Text); 4] = [
+    ("up", ["Up", "Lên", "上"]),
+    ("down", ["Down", "Xuống", "下"]),
+    ("left", ["Left", "Trái", "左"]),
+    ("right", ["Right", "Phải", "右"]),
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -124,18 +161,18 @@ const COMBO_KINDS: [Kind; 9] = [
 impl Kind {
     fn label(self) -> &'static str {
         match self {
-            Self::Unset => "Không đặt",
-            Self::Passthrough => "Giữ nguyên",
-            Self::Disabled => "Tắt",
-            Self::Keys => "Phím / tổ hợp phím",
-            Self::MouseButton => "Nút chuột khác",
-            Self::Scroll => "Cuộn",
-            Self::Run => "Chạy lệnh",
-            Self::Sticky => "Nút dính",
-            Self::Macro => "Macro",
-            Self::LayerHold => "Giữ để dùng lớp",
-            Self::LayerToggle => "Bật/tắt lớp",
-            Self::TapHold => "Bấm nhanh / giữ lâu",
+            Self::Unset => tr(["Not set", "Không đặt", "未设置"]),
+            Self::Passthrough => tr(["Unchanged", "Giữ nguyên", "保持不变"]),
+            Self::Disabled => tr(["Disabled", "Tắt", "禁用"]),
+            Self::Keys => tr(["Key / combination", "Phím / tổ hợp phím", "按键 / 组合键"]),
+            Self::MouseButton => tr(["Other mouse button", "Nút chuột khác", "其他鼠标按键"]),
+            Self::Scroll => tr(["Scroll", "Cuộn", "滚动"]),
+            Self::Run => tr(["Run command", "Chạy lệnh", "运行命令"]),
+            Self::Sticky => tr(["Sticky button", "Nút dính", "粘滞按键"]),
+            Self::Macro => tr(["Macro", "Macro", "宏"]),
+            Self::LayerHold => tr(["Hold for layer", "Giữ để dùng lớp", "按住使用层"]),
+            Self::LayerToggle => tr(["Toggle layer", "Bật/tắt lớp", "切换层"]),
+            Self::TapHold => tr(["Tap / hold", "Bấm nhanh / giữ lâu", "短按 / 长按"]),
         }
     }
 
@@ -216,13 +253,16 @@ impl Ui {
             Ok(Saved::Written) => true,
             Ok(Saved::ReloadedFromDisk) => {
                 self.toast(
-                    "File cấu hình vừa được sửa ở nơi khác nên đã tải lại. Hãy thao tác lại.",
+                    tr(["The config file was changed elsewhere and has been reloaded. Please try again.", "File cấu hình vừa được sửa ở nơi khác nên đã tải lại. Hãy thao tác lại.", "配置文件已在其他地方被修改并已重新加载，请重试。"]),
                 );
                 self.refresh_later();
                 false
             }
             Err(error) => {
-                self.toast(&format!("Chưa lưu: {error:#}"));
+                self.toast(&format!(
+                    "{}: {error:#}",
+                    tr(["Not saved", "Chưa lưu", "未保存"])
+                ));
                 false
             }
         }
@@ -267,7 +307,9 @@ impl Ui {
 
         let selected = self.app.borrow().clone();
         for entry in &entries {
-            let text = entry.as_deref().unwrap_or("Mọi ứng dụng");
+            let text = entry
+                .as_deref()
+                .unwrap_or(tr(["All apps", "Mọi ứng dụng", "所有应用"]));
             let label = gtk::Label::builder()
                 .label(text)
                 .xalign(0.0)
@@ -294,7 +336,9 @@ impl Ui {
     }
 
     fn device_group(self: &Rc<Self>) -> adw::PreferencesGroup {
-        let group = adw::PreferencesGroup::builder().title("Chuột").build();
+        let group = adw::PreferencesGroup::builder()
+            .title(tr(["Mouse", "Chuột", "鼠标"]))
+            .build();
         let current = self.store.borrow().doc().device_name();
         let mut names = readable_mouse_names();
         if !names.contains(&current) {
@@ -302,8 +346,12 @@ impl Ui {
         }
         let labels: Vec<&str> = names.iter().map(String::as_str).collect();
         let row = adw::ComboRow::builder()
-            .title("Thiết bị")
-            .subtitle("Chỉ hiện chuột mà tài khoản này đọc được theo quy tắc udev")
+            .title(tr(["Device", "Thiết bị", "设备"]))
+            .subtitle(tr([
+                "Shows only mice this account can read under the udev rule",
+                "Chỉ hiện chuột mà tài khoản này đọc được theo quy tắc udev",
+                "仅显示此账户可根据 udev 规则读取的鼠标",
+            ]))
             .model(&gtk::StringList::new(&labels))
             .build();
         if let Some(index) = names.iter().position(|name| *name == current) {
@@ -320,39 +368,51 @@ impl Ui {
     }
 
     fn buttons_group(self: &Rc<Self>) -> adw::PreferencesGroup {
-        let group = adw::PreferencesGroup::builder().title("Nút chuột").build();
+        let group = adw::PreferencesGroup::builder()
+            .title(tr(["Mouse buttons", "Nút chuột", "鼠标按键"]))
+            .build();
         let allow_left = self.store.borrow().doc().allow_left_remap();
         for (input, title) in MAIN_BUTTONS {
-            let row = self.action_row(input, title, &BUTTON_KINDS);
+            let row = self.action_row(input, tr(title), &BUTTON_KINDS);
             if input == "left" && !allow_left {
                 row.set_sensitive(false);
-                row.set_subtitle("Bị khóa để tránh mất điều khiển chuột");
+                row.set_subtitle(tr([
+                    "Locked so you cannot lose control of the mouse",
+                    "Bị khóa để tránh mất điều khiển chuột",
+                    "已锁定，以免失去对鼠标的控制",
+                ]));
             }
             group.add(&row);
         }
         let others = adw::ExpanderRow::builder()
-            .title("Nút khác")
-            .subtitle("Chỉ dùng nếu chuột của bạn có các nút này")
+            .title(tr(["Other buttons", "Nút khác", "其他按键"]))
+            .subtitle(tr([
+                "Only useful if your mouse has these buttons",
+                "Chỉ dùng nếu chuột của bạn có các nút này",
+                "仅当您的鼠标有这些按键时才有用",
+            ]))
             .build();
         for (input, title) in OTHER_BUTTONS {
-            others.add_row(&self.action_row(input, title, &BUTTON_KINDS));
+            others.add_row(&self.action_row(input, tr(title), &BUTTON_KINDS));
         }
         group.add(&others);
         group
     }
 
     fn wheel_group(self: &Rc<Self>) -> adw::PreferencesGroup {
-        let group = adw::PreferencesGroup::builder().title("Con lăn").build();
+        let group = adw::PreferencesGroup::builder()
+            .title(tr(["Wheel", "Con lăn", "滚轮"]))
+            .build();
         for (input, title) in WHEEL_INPUTS {
-            group.add(&self.action_row(input, title, &WHEEL_KINDS));
+            group.add(&self.action_row(input, tr(title), &WHEEL_KINDS));
         }
         group
     }
 
     fn combos_group(self: &Rc<Self>) -> adw::PreferencesGroup {
         let group = adw::PreferencesGroup::builder()
-            .title("Tổ hợp nút chuột")
-            .description("Bấm hai nút gần như cùng lúc. Nút trong tổ hợp sẽ phản hồi trễ một chút.")
+            .title(tr(["Button combos", "Tổ hợp nút chuột", "鼠标组合键"]))
+            .description(tr(["Press two buttons at almost the same time. Buttons in a combo respond slightly later.", "Bấm hai nút gần như cùng lúc. Nút trong tổ hợp sẽ phản hồi trễ một chút.", "几乎同时按下两个按键。组合中的按键响应会稍有延迟。"]))
             .build();
 
         let combos = self.store.borrow().doc().combos(&self.slot());
@@ -365,7 +425,7 @@ impl Ui {
             let row = self.action_row(&combo, &title, &COMBO_KINDS);
             let delete = gtk::Button::builder()
                 .icon_name("user-trash-symbolic")
-                .tooltip_text("Xóa tổ hợp")
+                .tooltip_text(tr(["Remove combo", "Xóa tổ hợp", "删除组合"]))
                 .valign(gtk::Align::Center)
                 .css_classes(["flat"])
                 .build();
@@ -385,12 +445,12 @@ impl Ui {
 
     fn new_combo_row(self: &Rc<Self>) -> adw::ActionRow {
         let allow_left = self.store.borrow().doc().allow_left_remap();
-        let choices: Vec<(&str, &str)> = MAIN_BUTTONS
+        let choices: Vec<(&str, Text)> = MAIN_BUTTONS
             .into_iter()
             .chain(OTHER_BUTTONS)
             .filter(|(input, _)| allow_left || *input != "left")
             .collect();
-        let labels: Vec<&str> = choices.iter().map(|(_, title)| *title).collect();
+        let labels: Vec<&str> = choices.iter().map(|(_, title)| tr(*title)).collect();
 
         let first = gtk::DropDown::from_strings(&labels);
         let second = gtk::DropDown::from_strings(&labels);
@@ -398,11 +458,13 @@ impl Ui {
         first.set_valign(gtk::Align::Center);
         second.set_valign(gtk::Align::Center);
         let add = gtk::Button::builder()
-            .label("Thêm")
+            .label(tr(["Add", "Thêm", "添加"]))
             .valign(gtk::Align::Center)
             .build();
 
-        let row = adw::ActionRow::builder().title("Thêm tổ hợp").build();
+        let row = adw::ActionRow::builder()
+            .title(tr(["Add combo", "Thêm tổ hợp", "添加组合"]))
+            .build();
         row.add_suffix(&first);
         row.add_suffix(&second);
         row.add_suffix(&add);
@@ -458,6 +520,21 @@ impl Ui {
             ui.fill_editor(&editor, &input, &form);
         });
         row
+    }
+
+    fn reopen(self: &Rc<Self>) {
+        let path = self.store.borrow().path().to_owned();
+        let app = self.window.application().and_downcast::<adw::Application>();
+        let (Some(app), Ok(store)) = (app, open_store(&path)) else {
+            self.toast(tr([
+                "Cannot read the config file",
+                "Không đọc được file cấu hình",
+                "无法读取配置文件",
+            ]));
+            return;
+        };
+        build_window(&app, store).present();
+        self.window.close();
     }
 
     fn fill_editor(self: &Rc<Self>, editor: &gtk::Box, input: &str, form: &Form) {
@@ -534,11 +611,11 @@ impl Ui {
     fn macro_editor(self: &Rc<Self>, editor: &gtk::Box, input: &str, text: &str, mode: MacroMode) {
         let summary = gtk::Label::new(Some(&macro_summary(text)));
         summary.add_css_class("dim-label");
-        let open = gtk::Button::with_label("Sửa macro");
+        let open = gtk::Button::with_label(tr(["Edit macro", "Sửa macro", "编辑宏"]));
         let current = Rc::new(RefCell::new(text.to_owned()));
         let mode = Rc::new(Cell::new(mode));
 
-        let labels: Vec<&str> = MACRO_MODES.iter().map(|(_, label)| *label).collect();
+        let labels: Vec<&str> = MACRO_MODES.iter().map(|(_, label)| tr(*label)).collect();
         let modes = gtk::DropDown::from_strings(&labels);
         if let Some(index) = MACRO_MODES.iter().position(|(m, _)| *m == mode.get()) {
             modes.set_selected(index as u32);
@@ -594,7 +671,7 @@ impl Ui {
             .build();
         let status = gtk::Label::builder().xalign(0.0).wrap(true).build();
         let help = gtk::Label::builder()
-            .label(MACRO_HELP)
+            .label(tr(MACRO_HELP))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label", "caption"])
@@ -613,7 +690,7 @@ impl Ui {
         body.append(&help);
 
         let save = gtk::Button::builder()
-            .label("Lưu")
+            .label(tr(["Save", "Lưu", "保存"]))
             .css_classes(["suggested-action"])
             .build();
         let header = adw::HeaderBar::new();
@@ -622,7 +699,7 @@ impl Ui {
         frame.add_top_bar(&header);
         frame.set_content(Some(&body));
         let dialog = adw::Dialog::builder()
-            .title("Sửa macro")
+            .title(tr(["Edit macro", "Sửa macro", "编辑宏"]))
             .content_width(620)
             .content_height(520)
             .child(&frame)
@@ -633,7 +710,11 @@ impl Ui {
             move |buffer: &gtk::TextBuffer| match Macro::parse(&macro_text(buffer)) {
                 Ok(parsed) => {
                     status.remove_css_class("error");
-                    status.set_text(&format!("Hợp lệ, dài {}.", seconds(parsed.total_ms)));
+                    status.set_text(&format!(
+                        "{} {}",
+                        tr(["Valid, length:", "Hợp lệ, dài:", "有效，时长："]),
+                        seconds(parsed.total_ms)
+                    ));
                     save.set_sensitive(true);
                 }
                 Err(error) => {
@@ -664,7 +745,11 @@ impl Ui {
     fn capture_button(self: &Rc<Self>, entry: &gtk::Entry, commit: Rc<dyn Fn()>) -> gtk::Button {
         let button = gtk::Button::builder()
             .icon_name("input-keyboard-symbolic")
-            .tooltip_text("Ghi phím bằng cách nhấn trên bàn phím")
+            .tooltip_text(tr([
+                "Record a key by pressing it on the keyboard",
+                "Ghi phím bằng cách nhấn trên bàn phím",
+                "在键盘上按键以录制",
+            ]))
             .build();
         let ui = self.clone();
         let entry = entry.clone();
@@ -681,7 +766,11 @@ impl Ui {
 
     fn capture_keys(self: &Rc<Self>, on_chord: impl Fn(String) + 'static) {
         let label = gtk::Label::builder()
-            .label("Nhấn phím hoặc tổ hợp phím cần gán.\nNhấn Esc để hủy.")
+            .label(tr([
+                "Press the key or combination to assign.\nPress Esc to cancel.",
+                "Nhấn phím hoặc tổ hợp phím cần gán.\nNhấn Esc để hủy.",
+                "请按下要分配的按键或组合键。\n按 Esc 取消。",
+            ]))
             .justify(gtk::Justification::Center)
             .margin_top(24)
             .margin_bottom(24)
@@ -689,7 +778,7 @@ impl Ui {
             .margin_end(24)
             .build();
         let dialog = adw::Dialog::builder()
-            .title("Ghi phím")
+            .title(tr(["Record key", "Ghi phím", "录制按键"]))
             .child(&label)
             .build();
 
@@ -715,11 +804,11 @@ impl Ui {
         self: &Rc<Self>,
         editor: &gtk::Box,
         input: &str,
-        choices: &'static [(&'static str, &'static str)],
+        choices: &'static [(&'static str, Text)],
         current: &str,
         make_form: impl Fn(&str) -> Form + 'static,
     ) {
-        let labels: Vec<&str> = choices.iter().map(|(_, label)| *label).collect();
+        let labels: Vec<&str> = choices.iter().map(|(_, label)| tr(*label)).collect();
         let dropdown = gtk::DropDown::from_strings(&labels);
         if let Some(index) = choices.iter().position(|(value, _)| *value == current) {
             dropdown.set_selected(index as u32);
@@ -779,7 +868,11 @@ impl Ui {
         if let Some(index) = hold_times.iter().position(|ms| *ms == hold_ms) {
             milliseconds.set_selected(index as u32);
         }
-        milliseconds.set_tooltip_text(Some("Giữ bao lâu thì tính là giữ lâu"));
+        milliseconds.set_tooltip_text(Some(tr([
+            "How long a press counts as a hold",
+            "Giữ bao lâu thì tính là giữ lâu",
+            "按住多久算作长按",
+        ])));
 
         let commit_all: Rc<dyn Fn()> = {
             let ui = self.clone();
@@ -814,9 +907,12 @@ impl Ui {
             .margin_top(6)
             .margin_bottom(6)
             .build();
-        for (row, (title, entry)) in [("Nhanh", &tap_entry), ("Giữ", &hold_entry)]
-            .into_iter()
-            .enumerate()
+        for (row, (title, entry)) in [
+            (tr(["Tap", "Nhanh", "短按"]), &tap_entry),
+            (tr(["Hold", "Giữ", "长按"]), &hold_entry),
+        ]
+        .into_iter()
+        .enumerate()
         {
             let commit = commit_all.clone();
             let wired = wire_entry(entry, Rc::new(move |_: &gtk::Entry| commit()));
@@ -827,7 +923,10 @@ impl Ui {
         }
         let commit = commit_all;
         milliseconds.connect_selected_notify(move |_| commit());
-        let label = gtk::Label::builder().label("Thời gian").xalign(0.0).build();
+        let label = gtk::Label::builder()
+            .label(tr(["Time", "Thời gian", "时间"]))
+            .xalign(0.0)
+            .build();
         grid.attach(&label, 0, 2, 1, 1);
         grid.attach(&milliseconds, 1, 2, 2, 1);
         editor.append(&grid);
@@ -842,7 +941,11 @@ impl Ui {
         let apps = Rc::new(apps);
 
         let search = gtk::SearchEntry::builder()
-            .placeholder_text("Tìm ứng dụng, hoặc nhập tên rồi nhấn Enter")
+            .placeholder_text(tr([
+                "Search for an app, or type a name and press Enter",
+                "Tìm ứng dụng, hoặc nhập tên rồi nhấn Enter",
+                "搜索应用，或输入名称后按 Enter",
+            ]))
             .build();
         let list = gtk::ListBox::builder()
             .selection_mode(gtk::SelectionMode::None)
@@ -899,7 +1002,7 @@ impl Ui {
         frame.add_top_bar(&adw::HeaderBar::new());
         frame.set_content(Some(&body));
         let dialog = adw::Dialog::builder()
-            .title("Thêm ứng dụng")
+            .title(tr(["Add app", "Thêm ứng dụng", "添加应用"]))
             .content_width(460)
             .content_height(560)
             .child(&frame)
@@ -941,12 +1044,13 @@ impl Ui {
             return;
         };
         let dialog = adw::AlertDialog::new(
-            Some("Xóa profile của ứng dụng?"),
-            Some(&format!(
-                "Mọi thiết lập của \"{app}\" trên tất cả các lớp sẽ bị xóa khỏi file cấu hình."
-            )),
+            Some(tr(["Remove this app profile?", "Xóa profile của ứng dụng?", "删除此应用的配置?"])),
+            Some(&tr(["All settings for \"{app}\" on every layer will be removed from the config file.", "Mọi thiết lập của \"{app}\" trên tất cả các lớp sẽ bị xóa khỏi file cấu hình.", "“{app}”在所有层上的设置都将从配置文件中删除。"]).replace("{app}", &app)),
         );
-        dialog.add_responses(&[("cancel", "Hủy"), ("remove", "Xóa")]);
+        dialog.add_responses(&[
+            ("cancel", tr(["Cancel", "Hủy", "取消"])),
+            ("remove", tr(["Remove", "Xóa", "删除"])),
+        ]);
         dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
         dialog.set_close_response("cancel");
         dialog.set_default_response(Some("cancel"));
@@ -969,13 +1073,17 @@ fn macro_text(buffer: &gtk::TextBuffer) -> String {
 }
 
 fn seconds(milliseconds: u64) -> String {
-    format!("{:.1} giây", milliseconds as f64 / 1000.0)
+    format!(
+        "{:.1} {}",
+        milliseconds as f64 / 1000.0,
+        tr(["s", "giây", "秒"])
+    )
 }
 
 fn macro_summary(text: &str) -> String {
     match Macro::parse(text) {
         Ok(parsed) => seconds(parsed.total_ms),
-        Err(_) => "Chưa có macro".to_owned(),
+        Err(_) => tr(["No macro yet", "Chưa có macro", "尚无宏"]).to_owned(),
     }
 }
 
@@ -984,7 +1092,10 @@ fn button_title(input: &str) -> String {
         .into_iter()
         .chain(OTHER_BUTTONS)
         .find(|(name, _)| *name == input.trim().to_lowercase())
-        .map_or_else(|| input.trim().to_owned(), |(_, title)| title.to_owned())
+        .map_or_else(
+            || input.trim().to_owned(),
+            |(_, title)| tr(title).to_owned(),
+        )
 }
 
 /// The name a config uses for an app: its desktop id without the suffix.
@@ -1086,11 +1197,17 @@ fn extension_active() -> bool {
 
 fn status_problem() -> Option<&'static str> {
     if !service_installed() {
-        Some(
-            "Chưa cài dịch vụ chạy nền nên thay đổi chưa có tác dụng. Xem mục \"Run on login\" trong README.",
-        )
+        Some(tr([
+            "The background service is not installed, so changes have no effect yet. See \"Run it\" in the README.",
+            "Chưa cài dịch vụ chạy nền nên thay đổi chưa có tác dụng. Xem mục \"Cài đặt\" trong README.",
+            "后台服务尚未安装，因此更改暂不生效。请参阅 README 中的“运行”部分。",
+        ]))
     } else if !extension_active() {
-        Some("GNOME extension chưa bật nên chỉ dùng được profile \"Mọi ứng dụng\".")
+        Some(tr([
+            "The GNOME extension is not enabled, so only the \"All apps\" profile works.",
+            "GNOME extension chưa bật nên chỉ dùng được profile \"Mọi ứng dụng\".",
+            "GNOME 扩展未启用，因此只有“所有应用”配置可用。",
+        ]))
     } else {
         None
     }
@@ -1107,18 +1224,59 @@ fn service_row(ui: &Rc<Ui>) -> adw::ActionRow {
         let action = if on { "enable" } else { "disable" };
         let done = systemctl(&[action, "--now", SERVICE]);
         if !done.is_some_and(|output| output.status.success()) {
-            toasts.toast("Không đổi được trạng thái dịch vụ.");
+            toasts.toast(tr([
+                "Could not change the service state.",
+                "Không đổi được trạng thái dịch vụ.",
+                "无法更改服务状态。",
+            ]));
         }
         switch.set_state(service_active());
         glib::Propagation::Stop
     });
 
     let row = adw::ActionRow::builder()
-        .title("Chạy nền")
-        .subtitle("Tự chạy khi đăng nhập")
+        .title(tr(["Run in background", "Chạy nền", "后台运行"]))
+        .subtitle(tr([
+            "Starts when you log in",
+            "Tự chạy khi đăng nhập",
+            "登录时自动启动",
+        ]))
         .build();
     row.add_suffix(&switch);
     row
+}
+
+fn language_dropdown(ui: &Rc<Ui>) -> gtk::DropDown {
+    let mut labels = vec![tr(["Automatic", "Tự động", "自动"])];
+    labels.extend(i18n::CHOICES.iter().map(|(_, name)| *name));
+    let dropdown = gtk::DropDown::from_strings(&labels);
+    dropdown.set_tooltip_text(Some(tr(["Language", "Ngôn ngữ", "语言"])));
+    let saved = i18n::saved_choice()
+        .and_then(|language| i18n::CHOICES.iter().position(|(l, _)| *l == language));
+    dropdown.set_selected(saved.map_or(0, |index| index as u32 + 1));
+
+    let ui = ui.clone();
+    dropdown.connect_selected_notify(move |dropdown| {
+        let choice = (dropdown.selected() as usize)
+            .checked_sub(1)
+            .map(|index| i18n::CHOICES[index].0);
+        if let Err(error) = i18n::save_choice(choice) {
+            eprintln!("could not save the language: {error}");
+        }
+        i18n::set_current(choice.unwrap_or_else(i18n::system_language));
+        // Every label is set when its widget is built, so the window is rebuilt.
+        let ui = ui.clone();
+        glib::idle_add_local_once(move || ui.reopen());
+    });
+    dropdown
+}
+
+fn open_store(path: &std::path::Path) -> anyhow::Result<Store> {
+    let default_device = readable_mouse_names()
+        .into_iter()
+        .next()
+        .unwrap_or_default();
+    Store::open(path, &default_device)
 }
 
 fn build_window(app: &adw::Application, store: Store) -> adw::ApplicationWindow {
@@ -1135,7 +1293,11 @@ fn build_window(app: &adw::Application, store: Store) -> adw::ApplicationWindow 
         .build();
     let remove_app = gtk::Button::builder()
         .icon_name("list-remove-symbolic")
-        .tooltip_text("Xóa profile của ứng dụng này")
+        .tooltip_text(tr([
+            "Remove this app's profile",
+            "Xóa profile của ứng dụng này",
+            "删除此应用的配置",
+        ]))
         .build();
 
     let ui = Rc::new(Ui {
@@ -1171,7 +1333,7 @@ fn build_window(app: &adw::Application, store: Store) -> adw::ApplicationWindow 
 
     let add_app = gtk::Button::builder()
         .icon_name("list-add-symbolic")
-        .tooltip_text("Thêm ứng dụng")
+        .tooltip_text(tr(["Add app", "Thêm ứng dụng", "添加应用"]))
         .build();
     {
         let ui = ui.clone();
@@ -1208,11 +1370,16 @@ fn build_window(app: &adw::Application, store: Store) -> adw::ApplicationWindow 
     sidebar_view.set_content(Some(&sidebar_scroller));
     sidebar_view.add_bottom_bar(&service_list);
 
-    let mut layer_names = vec!["Lớp cơ bản".to_owned()];
-    layer_names.extend((1..=MAX_LAYER).map(|layer| format!("Lớp {layer}")));
+    let mut layer_names = vec![tr(["Base layer", "Lớp cơ bản", "基础层"]).to_owned()];
+    layer_names
+        .extend((1..=MAX_LAYER).map(|layer| format!("{} {layer}", tr(["Layer", "Lớp", "层"]))));
     let layer_labels: Vec<&str> = layer_names.iter().map(String::as_str).collect();
     let layer_dropdown = gtk::DropDown::from_strings(&layer_labels);
-    layer_dropdown.set_tooltip_text(Some("Lớp đang chỉnh sửa"));
+    layer_dropdown.set_tooltip_text(Some(tr([
+        "Layer being edited",
+        "Lớp đang chỉnh sửa",
+        "正在编辑的层",
+    ])));
     {
         let ui = ui.clone();
         layer_dropdown.connect_selected_notify(move |dropdown| {
@@ -1224,6 +1391,7 @@ fn build_window(app: &adw::Application, store: Store) -> adw::ApplicationWindow 
     let content_header = adw::HeaderBar::new();
     content_header.set_show_start_title_buttons(false);
     content_header.pack_start(&layer_dropdown);
+    content_header.pack_end(&language_dropdown(&ui));
 
     let banner = adw::Banner::new("");
     if let Some(problem) = status_problem() {
@@ -1254,7 +1422,11 @@ fn build_window(app: &adw::Application, store: Store) -> adw::ApplicationWindow 
 fn error_window(app: &adw::Application, message: &str) -> adw::ApplicationWindow {
     let page = adw::StatusPage::builder()
         .icon_name("dialog-error-symbolic")
-        .title("Không đọc được file cấu hình")
+        .title(tr([
+            "Cannot read the config file",
+            "Không đọc được file cấu hình",
+            "无法读取配置文件",
+        ]))
         .description(glib::markup_escape_text(message).as_str())
         .build();
     let view = adw::ToolbarView::new();
@@ -1287,17 +1459,15 @@ fn main() -> glib::ExitCode {
         }
     };
 
+    i18n::set_current(i18n::saved_choice().unwrap_or_else(i18n::system_language));
+
     let app = adw::Application::builder().application_id(APP_ID).build();
     app.connect_activate(move |app| {
         if let Some(window) = app.active_window() {
             window.present();
             return;
         }
-        let default_device = readable_mouse_names()
-            .into_iter()
-            .next()
-            .unwrap_or_default();
-        let window = match Store::open(&path, &default_device) {
+        let window = match open_store(&path) {
             Ok(store) => build_window(app, store),
             Err(error) => error_window(app, &format!("{error:#}")),
         };

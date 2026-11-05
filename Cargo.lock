@@ -341,6 +341,7 @@ dependencies = [
 name = "clickshift-settings"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clickshift",
  "gtk4",
  "libadwaita",
