@@ -1,0 +1,20 @@
+# Short-lived test config: each app does something different and easy to see.
+
+[device]
+name = "AJAZZ 2.4G 8K"
+
+[default]
+side = "Alt+Left"
+extra = "Alt+Right"
+
+# Opens a new tab.
+[apps.brave-browser]
+side = "Ctrl+T"
+
+# Opens a new terminal tab.
+[apps."org.gnome.Ptyxis"]
+side = "Ctrl+Shift+T"
+
+# Side button does nothing, so a wrong profile is noticeable.
+[apps.zalo]
+side = "disabled"

@@ -1,0 +1,18 @@
+[workspace]
+members = ["gui"]
+
+[package]
+name = "clickshift"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+evdev = "0.13.2"
+libc = "0.2.191"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.2.0"
+toml_edit = "0.25.18"
+zbus = "5"

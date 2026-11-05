@@ -1,0 +1,72 @@
+# Copy to ~/.config/clickshift/config.toml
+# Saved changes apply within about a second; a broken edit is reported and ignored.
+#
+# INPUTS
+#   Buttons: left, right, middle, side, extra, forward, back, task, or a BTN_* name
+#   Wheel:   wheel_up, wheel_down, wheel_left, wheel_right
+#   Combo:   "side+extra" (both pressed within combo_ms)
+#
+# ACTIONS
+#   "Ctrl+W", "F5", "Super+Left"     keys, held as long as the button is held
+#   "VolumeUp", "PlayPause"          media keys
+#   "mouse_back"                     another mouse button
+#   "scroll:up"                      one wheel notch (up, down, left, right)
+#   "run:gnome-calculator"           a shell command
+#   "sticky:mouse_left"              first click holds, next click releases
+#   "layer:1"                        use layer 1 while held
+#   "layer-toggle:1"                 switch to layer 1, or back to the base layer
+#   "macro:e{WAITMS:330}{LMB}"       a timed sequence, see MACROS below
+#   "passthrough", "disabled"        unchanged, or do nothing
+#   { tap = "F5", hold = "Ctrl+R", hold_ms = 300 }   quick click or long press
+#
+# A wheel direction cannot use sticky, layer: or tap and hold, because a notch has
+# no release. Remapping the left button needs allow_left_remap = true in [device].
+#
+# MACROS
+#   Plain characters are typed as keys, assuming a US layout.
+#   {LMB} {RMB} {MMB} {MB4} {MB5}    click; add D or U to press or release: {LMBD}
+#   {MWUP} {MWDN} {MWLT} {MWRT}      one wheel notch
+#   {WAITMS:160}                     wait, in milliseconds
+#   {Enter} {F5} {Ctrl+C}            tap a key or chord
+#   {PRESS:Ctrl} {RELEASE:Ctrl}      press or release a key
+#
+# The prefix chooses how the button starts it:
+#   macro:         click to play, click again to stop
+#   macro-hold:    plays once while held, letting go stops it
+#   macro-repeat:  plays over and over while held, letting go stops it
+#
+# A macro also stops when the focused window changes or the mouse disconnects, and
+# anything it held is released. Tokens not listed here are refused, not guessed.
+# Wheel directions cannot use a macro.
+#
+# App names match the app id or WM class, ignoring case and ".desktop". Run
+# `clickshift run --dry-run --verbose` and switch windows to see an app's name.
+
+[device]
+name = "AJAZZ 2.4G 8K"
+# How long a button waits for its combo partner. Only buttons used in a combo wait.
+combo_ms = 50
+
+# Used for every app, unless an app profile below overrides that input.
+[default]
+side = "Alt+Left"
+extra = "Alt+Right"
+
+[apps.brave-browser]
+# Quick click goes back, long press closes the tab.
+side = { tap = "Alt+Left", hold = "Ctrl+W", hold_ms = 400 }
+# Both side buttons together reopen the last closed tab.
+"side+extra" = "Ctrl+Shift+T"
+
+[apps."org.gnome.Ptyxis"]
+side = "Ctrl+Shift+T"
+extra = "passthrough"
+
+# Hold the middle button in Zalo to use layer 1 below? Uncomment to try it:
+# [apps.zalo]
+# middle = "layer:1"
+#
+# [layers.1.default]
+# wheel_up = "VolumeUp"
+# wheel_down = "VolumeDown"
+# side = "PlayPause"

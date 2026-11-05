@@ -1,0 +1,4 @@
+# Optional, only for `cargo test --test e2e -- --ignored`.
+# Lets the logged-in user read the virtual devices the test suite creates. Real
+# keyboards and mice are not affected, because they do not have this name.
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="clickshift-test *", TAG+="uaccess"

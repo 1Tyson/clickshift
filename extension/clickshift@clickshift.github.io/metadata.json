@@ -1,0 +1,6 @@
+{
+  "uuid": "clickshift@clickshift.github.io",
+  "name": "Clickshift Focus Bridge",
+  "description": "Tells the clickshift mouse remapper which application is focused.",
+  "shell-version": ["51"]
+}

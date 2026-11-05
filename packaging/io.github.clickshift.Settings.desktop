@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Clickshift
+Comment=Remap mouse buttons for each application
+Exec=clickshift-settings
+Icon=input-mouse-symbolic
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=mouse;button;remap;
